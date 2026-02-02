@@ -1,9 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'homepage.dart';
+import 'purchase_history_screen.dart';
 import 'package:flutter/services.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   runApp(const ConcertApp());
 }
 
@@ -276,14 +280,14 @@ class _MainScreenState extends State<MainScreen> {
                                 dates[index],
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: CupertinoColors.secondaryLabel,
+                                  color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                                 ),
                               ),
                               Text(
                                 venues[index],
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: CupertinoColors.secondaryLabel,
+                                  color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                                 ),
                               ),
                             ],
@@ -291,7 +295,7 @@ class _MainScreenState extends State<MainScreen> {
                           trailing: Icon(
                             CupertinoIcons.chevron_forward,
                             size: 16,
-                            color: CupertinoColors.secondaryLabel,
+                            color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                           ),
                         ),
                       );
@@ -346,7 +350,7 @@ class _MainScreenState extends State<MainScreen> {
                             dates[index],
                             style: TextStyle(
                               fontSize: 14,
-                              color: CupertinoColors.secondaryLabel,
+                              color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                             ),
                           ),
                         ),
@@ -365,37 +369,6 @@ class _MainScreenState extends State<MainScreen> {
                   "Profile",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                trailing: CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    showCupertinoModalPopup(
-                      context: context,
-                      builder: (context) => CupertinoActionSheet(
-                        title: Text("Log Out"),
-                        message: Text("Are you sure you want to log out?"),
-                        actions: [
-                          CupertinoActionSheetAction(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              // Add your logout logic here
-                            },
-                            isDestructiveAction: true,
-                            child: Text("Log Out"),
-                          ),
-                        ],
-                        cancelButton: CupertinoActionSheetAction(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text("Cancel"),
-                        ),
-                      ),
-                    );
-                  },
-                  child: Icon(
-                    CupertinoIcons.square_arrow_right,
-                    color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
-                    size: 22,
                   ),
                 ),
               ),
@@ -581,9 +554,15 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
-                            subtitle: Text("alex.johnson@email.com"),
+                            subtitle: Text(
+                              "alex.johnson@email.com",
+                              style: TextStyle(
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                              ),
+                            ),
                           ),
                           Container(
                             height: 0.5,
@@ -610,9 +589,15 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
-                            subtitle: Text("+63 912 345 6789"),
+                            subtitle: Text(
+                              "+63 912 345 6789",
+                              style: TextStyle(
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                              ),
+                            ),
                           ),
                           Container(
                             height: 0.5,
@@ -639,9 +624,15 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
-                            subtitle: Text("Manila, Philippines"),
+                            subtitle: Text(
+                              "Manila, Philippines",
+                              style: TextStyle(
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -689,13 +680,19 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
-                            subtitle: Text("Manage your notifications"),
+                            subtitle: Text(
+                              "Manage your notifications",
+                              style: TextStyle(
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                              ),
+                            ),
                             trailing: Icon(
                               CupertinoIcons.chevron_forward,
                               size: 18,
-                              color: CupertinoColors.secondaryLabel,
+                              color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                             ),
                           ),
                           Container(
@@ -705,6 +702,16 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                           CupertinoListTile(
                             backgroundColor: Colors.transparent,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                CupertinoPageRoute(
+                                  builder: (context) => PurchaseHistoryScreen(
+                                    isDarkMode: widget.isDarkMode,
+                                  ),
+                                ),
+                              );
+                            },
                             leading: Container(
                               width: 40,
                               height: 40,
@@ -723,13 +730,19 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
-                            subtitle: Text("View all your purchases"),
+                            subtitle: Text(
+                              "View all your purchases",
+                              style: TextStyle(
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                              ),
+                            ),
                             trailing: Icon(
                               CupertinoIcons.chevron_forward,
                               size: 18,
-                              color: CupertinoColors.secondaryLabel,
+                              color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                             ),
                           ),
                           Container(
@@ -757,13 +770,19 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
-                            subtitle: Text("Manage your payment options"),
+                            subtitle: Text(
+                              "Manage your payment options",
+                              style: TextStyle(
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                              ),
+                            ),
                             trailing: Icon(
                               CupertinoIcons.chevron_forward,
                               size: 18,
-                              color: CupertinoColors.secondaryLabel,
+                              color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                             ),
                           ),
                         ],
@@ -832,12 +851,13 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
                             subtitle: Text(
                               widget.isDarkMode ? "Enabled" : "Disabled",
                               style: TextStyle(
-                                color: CupertinoColors.secondaryLabel,
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                                 fontSize: 14,
                               ),
                             ),
@@ -928,19 +948,20 @@ class _MainScreenState extends State<MainScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
+                                color: widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                               ),
                             ),
                             subtitle: Text(
                               "View developers",
                               style: TextStyle(
-                                color: CupertinoColors.secondaryLabel,
+                                color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                                 fontSize: 14,
                               ),
                             ),
                             trailing: Icon(
                               CupertinoIcons.chevron_forward,
                               size: 18,
-                              color: CupertinoColors.secondaryLabel,
+                              color: widget.isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                             ),
                           ),
                         ],

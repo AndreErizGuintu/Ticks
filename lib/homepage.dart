@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'services/purchase_store.dart';
 
 class Homepage extends StatefulWidget {
   final bool isDarkMode;
@@ -149,7 +151,7 @@ class _HomepageState extends State<Homepage> {
     },
   ];
 
-  final String apiKey = "xnd_development_UqmeMCI3yP53X2mMWvLxfr5raLAUDFOOjDG289NKhE1T2SirUWVGggr4RjxAy";
+  final String apiKey = "xnd_development_IgiQCiy0Q9Er1xrrPUXZPt6C7N7UKZW0SUWaG6MVQs19TxlV7LLbcXKVkcJU18m";
 
   @override
   Widget build(BuildContext context) {
@@ -934,14 +936,14 @@ class _HomepageState extends State<Homepage> {
       builder: (context) => TicketSelectionPage(
         concert: concert,
         isDarkMode: isDarkMode,
-        onPurchase: (selectedTicket) {
-          _buyTicket(concert, selectedTicket);
+        onPurchase: (selectedTicket, quantity) {
+          _buyTicket(concert, selectedTicket, quantity);
         },
       ),
     );
   }
 
-  Future<void> _buyTicket(Map<String, dynamic> concert, Map<String, dynamic> selectedTicket) async {
+  Future<void> _buyTicket(Map<String, dynamic> concert, Map<String, dynamic> selectedTicket, int quantity) async {
     showCupertinoDialog(
       context: context,
       barrierDismissible: false,
@@ -965,6 +967,9 @@ class _HomepageState extends State<Homepage> {
 
     final url = "https://api.xendit.co/v2/invoices";
     String auth = 'Basic ' + base64Encode(utf8.encode(apiKey));
+    final totalAmount = (selectedTicket['price'] as int) * quantity;
+
+    print("[_buyTicket] Creating invoice - ticket: ${selectedTicket['name']}, quantity: $quantity, totalAmount: $totalAmount");
 
     try {
       final response = await http.post(
@@ -972,22 +977,35 @@ class _HomepageState extends State<Homepage> {
         headers: {"Authorization": auth, "Content-Type": "application/json"},
         body: jsonEncode({
           "external_id": "concert_${DateTime.now().millisecondsSinceEpoch}",
-          "amount": selectedTicket['price'],
-          "description": "${concert['artist']} - ${concert['tour']} (${selectedTicket['name']})",
+          "amount": totalAmount,
+          "description": "${concert['artist']} - ${concert['tour']} (${selectedTicket['name']} x$quantity)",
           "payment_methods": ["GCASH", "CREDIT_CARD", "PAYMAYA"],
         }),
       );
 
+
       final data = jsonDecode(response.body);
+      print("[_buyTicket] Xendit response: $data");
       String? id = data["id"];
       String? invoiceUrl = data["invoice_url"];
 
       Navigator.of(context, rootNavigator: true).pop();
 
       if (id == null || invoiceUrl == null) {
+        print("[_buyTicket] ERROR: id or invoiceUrl is null");
         _showErrorDialog("Failed to create payment. Please try again.");
         return;
       }
+
+      print("[_buyTicket] Invoice created - id: $id");
+
+      // Create purchase record in memory store
+      PurchaseStore().createPurchase(
+        invoiceId: id,
+        concert: concert,
+        ticket: selectedTicket,
+        quantity: quantity,
+      );
 
       Navigator.push(
         context,
@@ -997,9 +1015,19 @@ class _HomepageState extends State<Homepage> {
             invoiceId: id,
             concert: concert,
             ticket: selectedTicket,
-            price: (selectedTicket['price'] as int).toDouble(),
+            price: totalAmount.toDouble(),
+            isDarkMode: widget.isDarkMode,
             onPaymentSuccess: () {
-              _showSuccessDialog("${concert['artist']} - ${selectedTicket['name']} ticket purchased successfully!");
+              // Mark purchase as paid in the store
+              print("[_buyTicket] onPaymentSuccess callback triggered for invoice: $id");
+              PurchaseStore().markAsPaid(id);
+
+              // Show success dialog after WebView is dismissed
+              Future.delayed(Duration(milliseconds: 500), () {
+                if (mounted) {
+                  _showSuccessDialog("${concert['artist']} - ${selectedTicket['name']} x$quantity ticket purchased successfully!");
+                }
+              });
             },
           ),
         ),
@@ -1011,6 +1039,7 @@ class _HomepageState extends State<Homepage> {
   }
 
   void _showSuccessDialog(String message) {
+    final isDarkMode = widget.isDarkMode;
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
@@ -1018,7 +1047,10 @@ class _HomepageState extends State<Homepage> {
         content: Text(
           message,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.black),
+          style: TextStyle(
+            fontSize: 16,
+            color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+          ),
         ),
         actions: [CupertinoDialogAction(
           child: Text("OK"),
@@ -1029,6 +1061,7 @@ class _HomepageState extends State<Homepage> {
   }
 
   void _showErrorDialog(String message) {
+    final isDarkMode = widget.isDarkMode;
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
@@ -1036,7 +1069,10 @@ class _HomepageState extends State<Homepage> {
         content: Text(
           message,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.black),
+          style: TextStyle(
+            fontSize: 16,
+            color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+          ),
         ),
         actions: [CupertinoDialogAction(
           child: Text("Try Again"),
@@ -1423,7 +1459,7 @@ class ConcertDetailsPage extends StatelessWidget {
 class TicketSelectionPage extends StatefulWidget {
   final Map<String, dynamic> concert;
   final bool isDarkMode;
-  final Function(Map<String, dynamic>) onPurchase;
+  final Function(Map<String, dynamic>, int) onPurchase;
 
   const TicketSelectionPage({
     super.key,
@@ -1900,7 +1936,7 @@ class _TicketSelectionPageState extends State<TicketSelectionPage> {
                         borderRadius: BorderRadius.circular(12),
                         onPressed: () {
                           Navigator.pop(context);
-                          widget.onPurchase(selectedTicket);
+                          widget.onPurchase(selectedTicket, _ticketQuantity);
                         },
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1966,6 +2002,7 @@ class PaymentPage extends StatefulWidget {
   final Map<String, dynamic> ticket;
   final double price;
   final VoidCallback onPaymentSuccess;
+  final bool isDarkMode;
 
   const PaymentPage({
     super.key,
@@ -1975,6 +2012,7 @@ class PaymentPage extends StatefulWidget {
     required this.ticket,
     required this.price,
     required this.onPaymentSuccess,
+    required this.isDarkMode,
   });
 
   @override
@@ -1985,17 +2023,25 @@ class _PaymentPageState extends State<PaymentPage> {
   late WebViewController controller;
   bool _isLoading = true;
   Timer? _pollingTimer;
-  final String _apiKey = "xnd_development_UqmeMCI3yP53X2mMWvLxfr5raLAUDFOOjDG289NKhE1T2SirUWVGggr4RjxAy";
+  final String _apiKey = dotenv.env['XENDIT_API_KEY'] ?? '';
+  bool _paymentProcessed = false; // Idempotency flag to prevent duplicate processing
 
   @override
   void initState() {
     super.initState();
+
+
     controller = WebViewController()
+
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (url) => setState(() => _isLoading = true),
-          onPageFinished: (url) => setState(() => _isLoading = false),
+          onPageStarted: (url) {
+            if (mounted) setState(() => _isLoading = true);
+          },
+          onPageFinished: (url) {
+            if (mounted) setState(() => _isLoading = false);
+          },
         ),
       )
       ..loadRequest(Uri.parse(widget.url));
@@ -2003,21 +2049,63 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+    print("[PaymentPage] Starting polling for invoice: ${widget.invoiceId}");
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      // Skip if already processed
+      if (_paymentProcessed) {
+        print("[PaymentPage] Payment already processed, skipping poll");
+        timer.cancel();
+        return;
+      }
+
       try {
         final url = "https://api.xendit.co/v2/invoices/${widget.invoiceId}";
         String auth = 'Basic ' + base64Encode(utf8.encode(_apiKey));
+        print("[PaymentPage] Polling... checking status");
         final response = await http.get(Uri.parse(url), headers: {"Authorization": auth});
+
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
-          if (data["status"] == "PAID") {
+          final status = data["status"];
+          print("[PaymentPage] Current status: $status");
+
+          if (status == "PAID" && !_paymentProcessed) {
+            print("[PaymentPage] ===== PAYMENT CONFIRMED PAID =====");
+
+            // Set flag FIRST to prevent duplicate processing
+            _paymentProcessed = true;
+
+            // Cancel timer
             timer.cancel();
+            _pollingTimer = null;
+            print("[PaymentPage] Timer cancelled");
+
+            // Call success callback
+            print("[PaymentPage] Calling onPaymentSuccess");
             widget.onPaymentSuccess();
-            WidgetsBinding.instance.addPostFrameCallback((_) => Navigator.of(context).pop());
+            print("[PaymentPage] onPaymentSuccess completed");
+
+            // Dismiss the WebView page
+            print("[PaymentPage] Attempting to pop WebView page...");
+            if (mounted) {
+              // Use a slight delay to ensure callback completes
+              await Future.delayed(Duration(milliseconds: 100));
+
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+                print("[PaymentPage] ✅ WebView page popped successfully");
+              } else {
+                print("[PaymentPage] ❌ Cannot pop - no route to pop");
+              }
+            } else {
+              print("[PaymentPage] ❌ Widget not mounted, cannot pop");
+            }
           }
+        } else {
+          print("[PaymentPage] Polling response code: ${response.statusCode}");
         }
       } catch (e) {
-        print("Polling error: $e");
+        print("[PaymentPage] Polling error: $e");
       }
     });
   }
@@ -2030,16 +2118,19 @@ class _PaymentPageState extends State<PaymentPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = widget.isDarkMode ? Color(0xFF000000) : CupertinoColors.white;
+    final textColor = widget.isDarkMode ? CupertinoColors.white : CupertinoColors.black;
+
     return CupertinoPageScaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       navigationBar: CupertinoNavigationBar(
-        backgroundColor: Colors.white,
+        backgroundColor: widget.isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.white,
         middle: Text(
           "Payment",
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: Colors.black,
+            color: textColor,
           ),
         ),
       ),
@@ -2056,7 +2147,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   Text(
                     "Loading payment gateway...",
                     style: TextStyle(
-                      color: Colors.black,
+                      color: textColor,
                       fontSize: 16,
                     ),
                   ),
