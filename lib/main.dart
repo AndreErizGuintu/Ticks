@@ -7,7 +7,15 @@ import 'package:flutter/services.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+
+  try {
+    await dotenv.load(fileName: ".env");
+    print("✅ .env file loaded successfully");
+  } catch (e) {
+    print("⚠️ Warning: .env file not found or failed to load: $e");
+    print("Using fallback API keys for development");
+  }
+
   runApp(const ConcertApp());
 }
 

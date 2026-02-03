@@ -151,7 +151,8 @@ class _HomepageState extends State<Homepage> {
     },
   ];
 
-  final String apiKey = "xnd_development_IgiQCiy0Q9Er1xrrPUXZPt6C7N7UKZW0SUWaG6MVQs19TxlV7LLbcXKVkcJU18m";
+  // Load API key from environment variables (fallback to development key for testing)
+  final String apiKey = dotenv.env['XENDIT_API_KEY'] ?? "xnd_development_IgiQCiy0Q9Er1xrrPUXZPt6C7N7UKZW0SUWaG6MVQs19TxlV7LLbcXKVkcJU18m";
 
   @override
   Widget build(BuildContext context) {
@@ -2019,28 +2020,39 @@ class PaymentPage extends StatefulWidget {
   State<PaymentPage> createState() => _PaymentPageState();
 }
 
-class _PaymentPageState extends State<PaymentPage> {
+class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
   late WebViewController controller;
   bool _isLoading = true;
   Timer? _pollingTimer;
-  final String _apiKey = dotenv.env['XENDIT_API_KEY'] ?? '';
+  // Use same fallback logic as main page
+  final String _apiKey = dotenv.env['XENDIT_API_KEY'] ?? "xnd_development_IgiQCiy0Q9Er1xrrPUXZPt6C7N7UKZW0SUWaG6MVQs19TxlV7LLbcXKVkcJU18m";
   bool _paymentProcessed = false; // Idempotency flag to prevent duplicate processing
 
   @override
   void initState() {
     super.initState();
 
+    print("[PaymentPage] Initializing - API Key loaded: ${_apiKey.isNotEmpty ? 'Yes' : 'No'}");
+    print("[PaymentPage] API Key (first 20 chars): ${_apiKey.substring(0, _apiKey.length > 20 ? 20 : _apiKey.length)}...");
+
+    // Add lifecycle observer for iOS background/foreground handling
+    WidgetsBinding.instance.addObserver(this);
 
     controller = WebViewController()
-
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (url) {
             if (mounted) setState(() => _isLoading = true);
+            _checkUrlForSuccess(url);
           },
           onPageFinished: (url) {
             if (mounted) setState(() => _isLoading = false);
+            _checkUrlForSuccess(url);
+          },
+          onNavigationRequest: (request) {
+            _checkUrlForSuccess(request.url);
+            return NavigationDecision.navigate;
           },
         ),
       )
@@ -2048,9 +2060,35 @@ class _PaymentPageState extends State<PaymentPage> {
     _startPolling();
   }
 
+  // Check URL for success indicators (helps with iOS redirect handling)
+  void _checkUrlForSuccess(String url) {
+    print("[PaymentPage] URL navigation: $url");
+
+    if ((url.contains('status=paid') ||
+         url.contains('success') ||
+         url.contains('payment_success') ||
+         url.contains('completed')) &&
+        !_paymentProcessed) {
+      print("[PaymentPage] ✅ Success URL detected!");
+      _handlePaymentSuccess();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    print("[PaymentPage] App lifecycle changed: $state");
+
+    // When app returns to foreground on iOS, check payment status
+    if (state == AppLifecycleState.resumed && !_paymentProcessed) {
+      print("[PaymentPage] App resumed - checking payment status immediately");
+      _checkPaymentStatusNow();
+    }
+  }
+
   void _startPolling() {
     print("[PaymentPage] Starting polling for invoice: ${widget.invoiceId}");
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       // Skip if already processed
       if (_paymentProcessed) {
         print("[PaymentPage] Payment already processed, skipping poll");
@@ -2062,7 +2100,22 @@ class _PaymentPageState extends State<PaymentPage> {
         final url = "https://api.xendit.co/v2/invoices/${widget.invoiceId}";
         String auth = 'Basic ' + base64Encode(utf8.encode(_apiKey));
         print("[PaymentPage] Polling... checking status");
-        final response = await http.get(Uri.parse(url), headers: {"Authorization": auth});
+
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {
+            "Authorization": auth,
+            "Content-Type": "application/json",
+          }
+        ).timeout(
+          Duration(seconds: 5),
+          onTimeout: () {
+            print("[PaymentPage] ⚠️ Request timeout");
+            return http.Response('Request timeout', 408);
+          },
+        );
+
+        print("[PaymentPage] Polling response code: ${response.statusCode}");
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -2071,38 +2124,18 @@ class _PaymentPageState extends State<PaymentPage> {
 
           if (status == "PAID" && !_paymentProcessed) {
             print("[PaymentPage] ===== PAYMENT CONFIRMED PAID =====");
-
-            // Set flag FIRST to prevent duplicate processing
-            _paymentProcessed = true;
-
-            // Cancel timer
+            _handlePaymentSuccess();
             timer.cancel();
-            _pollingTimer = null;
-            print("[PaymentPage] Timer cancelled");
-
-            // Call success callback
-            print("[PaymentPage] Calling onPaymentSuccess");
-            widget.onPaymentSuccess();
-            print("[PaymentPage] onPaymentSuccess completed");
-
-            // Dismiss the WebView page
-            print("[PaymentPage] Attempting to pop WebView page...");
-            if (mounted) {
-              // Use a slight delay to ensure callback completes
-              await Future.delayed(Duration(milliseconds: 100));
-
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-                print("[PaymentPage] ✅ WebView page popped successfully");
-              } else {
-                print("[PaymentPage] ❌ Cannot pop - no route to pop");
-              }
-            } else {
-              print("[PaymentPage] ❌ Widget not mounted, cannot pop");
-            }
+          } else if (status == "EXPIRED" || status == "FAILED") {
+            print("[PaymentPage] Payment ${status}");
+            timer.cancel();
+            _handlePaymentFailure(status);
           }
+        } else if (response.statusCode == 401) {
+          print("[PaymentPage] ❌ AUTH ERROR 401 - API Key issue!");
+          print("[PaymentPage] Using key: ${_apiKey.substring(0, 20)}...");
         } else {
-          print("[PaymentPage] Polling response code: ${response.statusCode}");
+          print("[PaymentPage] API Error: ${response.statusCode} - ${response.body}");
         }
       } catch (e) {
         print("[PaymentPage] Polling error: $e");
@@ -2110,8 +2143,100 @@ class _PaymentPageState extends State<PaymentPage> {
     });
   }
 
+  // Manual status check (used when app resumes)
+  Future<void> _checkPaymentStatusNow() async {
+    if (_paymentProcessed) return;
+
+    try {
+      final url = "https://api.xendit.co/v2/invoices/${widget.invoiceId}";
+      String auth = 'Basic ' + base64Encode(utf8.encode(_apiKey));
+
+      print("[PaymentPage] Manual status check...");
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          "Authorization": auth,
+          "Content-Type": "application/json",
+        },
+      ).timeout(Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final status = data["status"];
+        print("[PaymentPage] Manual check result: $status");
+
+        if (status == "PAID") {
+          _handlePaymentSuccess();
+        }
+      }
+    } catch (e) {
+      print("[PaymentPage] Manual check error: $e");
+    }
+  }
+
+  void _handlePaymentSuccess() async {
+    if (_paymentProcessed) {
+      print("[PaymentPage] Already processed, skipping");
+      return;
+    }
+
+    print("[PaymentPage] 🎉 Processing payment success...");
+    _paymentProcessed = true;
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+
+    // Call success callback first
+    print("[PaymentPage] Calling onPaymentSuccess");
+    widget.onPaymentSuccess();
+
+    // Small delay to ensure callback completes
+    await Future.delayed(Duration(milliseconds: 200));
+
+    // Pop the WebView page
+    print("[PaymentPage] Attempting to pop WebView page...");
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      print("[PaymentPage] ✅ WebView closed successfully");
+    } else {
+      print("[PaymentPage] ❌ Cannot pop WebView");
+    }
+  }
+
+  void _handlePaymentFailure(String status) {
+    if (mounted) {
+      final isDark = widget.isDarkMode;
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: Icon(
+            CupertinoIcons.xmark_circle,
+            size: 48,
+            color: Color(0xFFFF3B30)
+          ),
+          content: Text(
+            "Payment $status. Please try again.",
+            style: TextStyle(
+              color: isDark ? CupertinoColors.white : CupertinoColors.black,
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop(); // Close WebView
+              },
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
+    print("[PaymentPage] Disposing - cleaning up");
+    WidgetsBinding.instance.removeObserver(this);
     _pollingTimer?.cancel();
     super.dispose();
   }

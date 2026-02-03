@@ -13,10 +13,12 @@ workflows:
         script: |
           echo "Creating .env file from environment variables..."
           cat > .env <<EOF
+          XENDIT_API_KEY=$XENDIT_API_KEY
           PAYMONGO_SECRET_KEY=$PAYMONGO_SECRET_KEY
-          # Add any other environment variables your app needs
           EOF
           echo ".env file created successfully"
+          echo "Verifying .env file:"
+          cat .env
 
       - name: Get Flutter dependencies
         script: flutter packages pub get
