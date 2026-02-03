@@ -155,6 +155,15 @@ class _HomepageState extends State<Homepage> {
   final String apiKey = dotenv.env['XENDIT_API_KEY'] ?? "xnd_development_IgiQCiy0Q9Er1xrrPUXZPt6C7N7UKZW0SUWaG6MVQs19TxlV7LLbcXKVkcJU18m";
 
   @override
+  void initState() {
+    super.initState();
+    print("[Homepage] Initializing...");
+    print("[Homepage] API Key from dotenv: ${dotenv.env['XENDIT_API_KEY'] != null ? 'LOADED' : 'NULL'}");
+    print("[Homepage] Using API key (first 30 chars): ${apiKey.substring(0, apiKey.length > 30 ? 30 : apiKey.length)}...");
+    print("[Homepage] Full key length: ${apiKey.length} characters");
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 375;
@@ -2034,12 +2043,23 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
 
     print("[PaymentPage] Initializing - API Key loaded: ${_apiKey.isNotEmpty ? 'Yes' : 'No'}");
     print("[PaymentPage] API Key (first 20 chars): ${_apiKey.substring(0, _apiKey.length > 20 ? 20 : _apiKey.length)}...");
+    print("[PaymentPage] Invoice ID: ${widget.invoiceId}");
 
     // Add lifecycle observer for iOS background/foreground handling
     WidgetsBinding.instance.addObserver(this);
 
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        'PaymentSuccess',
+        onMessageReceived: (JavaScriptMessage message) {
+          print("[PaymentPage] JavaScript message received: ${message.message}");
+          if (message.message == 'PAID' || message.message == 'SUCCESS') {
+            print("[PaymentPage] Payment confirmed via JavaScript channel!");
+            _handlePaymentSuccess();
+          }
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (url) {
@@ -2049,6 +2069,7 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
           onPageFinished: (url) {
             if (mounted) setState(() => _isLoading = false);
             _checkUrlForSuccess(url);
+            _injectPaymentDetectionScript();
           },
           onNavigationRequest: (request) {
             _checkUrlForSuccess(request.url);
@@ -2058,6 +2079,37 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
       )
       ..loadRequest(Uri.parse(widget.url));
     _startPolling();
+  }
+
+  // Inject JavaScript to detect payment completion
+  void _injectPaymentDetectionScript() {
+    controller.runJavaScript('''
+      (function() {
+        console.log('[Xendit] Payment detection script injected');
+        
+        // Check if page indicates success
+        function checkPaymentStatus() {
+          var bodyText = document.body.innerText || '';
+          var url = window.location.href;
+          
+          if (url.includes('status=paid') || 
+              url.includes('success') || 
+              bodyText.toLowerCase().includes('payment successful') ||
+              bodyText.toLowerCase().includes('pembayaran berhasil')) {
+            console.log('[Xendit] SUCCESS detected in page!');
+            if (window.PaymentSuccess) {
+              PaymentSuccess.postMessage('PAID');
+            }
+          }
+        }
+        
+        // Run check immediately
+        setTimeout(checkPaymentStatus, 1000);
+        
+        // Run check periodically
+        setInterval(checkPaymentStatus, 2000);
+      })();
+    ''');
   }
 
   // Check URL for success indicators (helps with iOS redirect handling)
@@ -2088,6 +2140,10 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
 
   void _startPolling() {
     print("[PaymentPage] Starting polling for invoice: ${widget.invoiceId}");
+
+    // Do an immediate check
+    _checkPaymentStatusNow();
+
     _pollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       // Skip if already processed
       if (_paymentProcessed) {
@@ -2099,7 +2155,7 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
       try {
         final url = "https://api.xendit.co/v2/invoices/${widget.invoiceId}";
         String auth = 'Basic ' + base64Encode(utf8.encode(_apiKey));
-        print("[PaymentPage] Polling... checking status");
+        print("[PaymentPage] Polling... checking status (attempt ${timer.tick})");
 
         final response = await http.get(
           Uri.parse(url),
@@ -2108,10 +2164,10 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
             "Content-Type": "application/json",
           }
         ).timeout(
-          Duration(seconds: 5),
+          Duration(seconds: 8),
           onTimeout: () {
-            print("[PaymentPage] ⚠️ Request timeout");
-            return http.Response('Request timeout', 408);
+            print("[PaymentPage] ⚠️ Request timeout after 8s");
+            return http.Response('{"error": "timeout"}', 408);
           },
         );
 
@@ -2120,7 +2176,10 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           final status = data["status"];
-          print("[PaymentPage] Current status: $status");
+          print("[PaymentPage] ✓ Current status: $status");
+
+          // Log full response for debugging
+          print("[PaymentPage] Full response: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...");
 
           if (status == "PAID" && !_paymentProcessed) {
             print("[PaymentPage] ===== PAYMENT CONFIRMED PAID =====");
@@ -2134,43 +2193,69 @@ class _PaymentPageState extends State<PaymentPage> with WidgetsBindingObserver {
         } else if (response.statusCode == 401) {
           print("[PaymentPage] ❌ AUTH ERROR 401 - API Key issue!");
           print("[PaymentPage] Using key: ${_apiKey.substring(0, 20)}...");
+          print("[PaymentPage] Full key length: ${_apiKey.length}");
+          // Don't cancel timer, might be temporary
         } else {
-          print("[PaymentPage] API Error: ${response.statusCode} - ${response.body}");
+          print("[PaymentPage] API Error: ${response.statusCode}");
+          print("[PaymentPage] Response body: ${response.body}");
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
         print("[PaymentPage] Polling error: $e");
+        print("[PaymentPage] Stack trace: ${stackTrace.toString().substring(0, 200)}");
       }
     });
   }
 
   // Manual status check (used when app resumes)
   Future<void> _checkPaymentStatusNow() async {
-    if (_paymentProcessed) return;
+    if (_paymentProcessed) {
+      print("[PaymentPage] Already processed, skipping manual check");
+      return;
+    }
 
     try {
       final url = "https://api.xendit.co/v2/invoices/${widget.invoiceId}";
       String auth = 'Basic ' + base64Encode(utf8.encode(_apiKey));
 
-      print("[PaymentPage] Manual status check...");
+      print("[PaymentPage] === MANUAL STATUS CHECK ===");
+      print("[PaymentPage] Invoice ID: ${widget.invoiceId}");
+      print("[PaymentPage] API endpoint: $url");
+
       final response = await http.get(
         Uri.parse(url),
         headers: {
           "Authorization": auth,
           "Content-Type": "application/json",
         },
-      ).timeout(Duration(seconds: 5));
+      ).timeout(
+        Duration(seconds: 10),
+        onTimeout: () {
+          print("[PaymentPage] Manual check timeout");
+          return http.Response('{"error": "timeout"}', 408);
+        },
+      );
+
+      print("[PaymentPage] Manual check response code: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final status = data["status"];
-        print("[PaymentPage] Manual check result: $status");
+        print("[PaymentPage] Manual check status: $status");
+        print("[PaymentPage] Response: ${response.body.substring(0, response.body.length > 300 ? 300 : response.body.length)}");
 
         if (status == "PAID") {
+          print("[PaymentPage] ✅ PAID status detected in manual check!");
           _handlePaymentSuccess();
+        } else {
+          print("[PaymentPage] Status is still: $status");
         }
+      } else {
+        print("[PaymentPage] Manual check failed with code: ${response.statusCode}");
+        print("[PaymentPage] Error body: ${response.body}");
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print("[PaymentPage] Manual check error: $e");
+      print("[PaymentPage] Stack: $stackTrace");
     }
   }
 
