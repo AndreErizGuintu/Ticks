@@ -2,8 +2,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'models/purchase.dart';
-import 'services/purchase_store.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class PurchaseHistoryScreen extends StatefulWidget {
   final bool isDarkMode;
@@ -18,11 +17,12 @@ class PurchaseHistoryScreen extends StatefulWidget {
 }
 
 class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
-  final PurchaseStore _store = PurchaseStore();
-
   @override
   Widget build(BuildContext context) {
-    final purchases = _store.purchases;
+    // Read purchase history from Hive
+    final box = Hive.box('auth');
+    final purchaseHistory = box.get('purchaseHistory', defaultValue: []) as List;
+
     final backgroundColor = widget.isDarkMode ? Color(0xFF000000) : Color(0xFFF2F2F7);
     final cardColor = widget.isDarkMode ? Color(0xFF1C1C1E) : Colors.white;
     final textColor = widget.isDarkMode ? Colors.white : Colors.black;
@@ -42,16 +42,17 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
         ),
       ),
       child: SafeArea(
-        child: purchases.isEmpty
+        child: purchaseHistory.isEmpty
             ? _buildEmptyState(textColor, secondaryTextColor)
             : ListView.builder(
                 physics: BouncingScrollPhysics(),
                 padding: EdgeInsets.all(16),
-                itemCount: purchases.length,
+                itemCount: purchaseHistory.length,
                 itemBuilder: (context, index) {
-                  final purchase = purchases[purchases.length - 1 - index]; // newest first
+                  // Show newest first
+                  final purchaseData = purchaseHistory[purchaseHistory.length - 1 - index] as Map;
                   return _buildPurchaseCard(
-                    purchase,
+                    purchaseData,
                     cardColor,
                     textColor,
                     secondaryTextColor,
@@ -95,15 +96,26 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
   }
 
   Widget _buildPurchaseCard(
-    Purchase purchase,
+    Map purchaseData,
     Color cardColor,
     Color textColor,
     Color secondaryTextColor,
   ) {
-    final statusColor = _getStatusColor(purchase.status);
+    final status = purchaseData['status'] ?? 'PENDING';
+    final artist = purchaseData['artist'] ?? 'Unknown Artist';
+    final tour = purchaseData['tour'] ?? '';
+    final venue = purchaseData['venue'] ?? 'Unknown Venue';
+    final date = purchaseData['date'] ?? '';
+    final ticketType = purchaseData['ticketType'] ?? 'Standard';
+    final quantity = purchaseData['quantity'] ?? 1;
+    final amount = purchaseData['amount'] ?? 0.0;
+    final paidAtStr = purchaseData['paidAt'];
+
+    final statusColor = _getStatusColor(status);
+    final formattedAmount = '₱${amount.toStringAsFixed(0)}';
 
     return GestureDetector(
-      onTap: () => _showPurchaseDetail(purchase),
+      onTap: () => _showPurchaseDetail(purchaseData),
       child: Container(
         margin: EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -130,7 +142,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      purchase.concertArtist,
+                      artist,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -138,12 +150,12 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                       ),
                     ),
                   ),
-                  _buildStatusBadge(purchase.status, statusColor),
+                  _buildStatusBadge(status, statusColor),
                 ],
               ),
               SizedBox(height: 4),
               Text(
-                purchase.concertTour,
+                tour,
                 style: TextStyle(
                   fontSize: 14,
                   color: secondaryTextColor,
@@ -160,9 +172,9 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   ),
                   SizedBox(width: 6),
                   Text(
-                    purchase.quantity > 1
-                        ? '${purchase.ticketType} x${purchase.quantity}'
-                        : purchase.ticketType,
+                    quantity > 1
+                        ? '$ticketType x$quantity'
+                        : ticketType,
                     style: TextStyle(
                       fontSize: 14,
                       color: textColor,
@@ -170,7 +182,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   ),
                   Spacer(),
                   Text(
-                    purchase.formattedAmount,
+                    formattedAmount,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -190,7 +202,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      purchase.concertVenue,
+                      venue,
                       style: TextStyle(
                         fontSize: 14,
                         color: secondaryTextColor,
@@ -209,7 +221,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   ),
                   SizedBox(width: 6),
                   Text(
-                    purchase.concertDate,
+                    date,
                     style: TextStyle(
                       fontSize: 14,
                       color: secondaryTextColor,
@@ -217,7 +229,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   ),
                 ],
               ),
-              if (purchase.status == 'PAID' && purchase.paidAt != null) ...[
+              if (status == 'PAID' && paidAtStr != null) ...[
                 SizedBox(height: 8),
                 Row(
                   children: [
@@ -228,7 +240,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                     ),
                     SizedBox(width: 6),
                     Text(
-                      'Paid on ${_formatDate(purchase.paidAt!)}',
+                      'Paid on ${_formatDate(DateTime.parse(paidAtStr))}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Color(0xFF34C759),
@@ -283,7 +295,19 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     return '${months[date.month - 1]} ${date.day}, ${date.year} at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  void _showPurchaseDetail(Purchase purchase) {
+  void _showPurchaseDetail(Map purchaseData) {
+    final status = purchaseData['status'] ?? 'PENDING';
+    final artist = purchaseData['artist'] ?? 'Unknown Artist';
+    final tour = purchaseData['tour'] ?? '';
+    final venue = purchaseData['venue'] ?? 'Unknown Venue';
+    final date = purchaseData['date'] ?? '';
+    final ticketType = purchaseData['ticketType'] ?? 'Standard';
+    final quantity = purchaseData['quantity'] ?? 1;
+    final amount = purchaseData['amount'] ?? 0.0;
+    final id = purchaseData['id'] ?? 'N/A';
+    final paidAtStr = purchaseData['paidAt'];
+
+    final formattedAmount = '₱${amount.toStringAsFixed(0)}';
     final textColor = widget.isDarkMode ? Colors.white : Colors.black;
     final secondaryTextColor = Color(0xFF8E8E93);
     final cardColor = widget.isDarkMode ? Color(0xFF1C1C1E) : Colors.white;
@@ -323,24 +347,24 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
             ),
             SizedBox(height: 24),
             // QR Placeholder
-            _buildQRPlaceholder(purchase),
+            _buildQRPlaceholder(status),
             SizedBox(height: 24),
             // Purchase info
             Expanded(
               child: ListView(
                 padding: EdgeInsets.symmetric(horizontal: 24),
                 children: [
-                  _buildDetailRow("Artist", purchase.concertArtist, textColor, secondaryTextColor),
-                  _buildDetailRow("Tour", purchase.concertTour, textColor, secondaryTextColor),
-                  _buildDetailRow("Venue", purchase.concertVenue, textColor, secondaryTextColor),
-                  _buildDetailRow("Date", purchase.concertDate, textColor, secondaryTextColor),
-                  _buildDetailRow("Ticket Type", purchase.ticketType, textColor, secondaryTextColor),
-                  _buildDetailRow("Quantity", purchase.quantity.toString(), textColor, secondaryTextColor),
-                  _buildDetailRow("Amount", purchase.formattedAmount, textColor, secondaryTextColor),
-                  _buildDetailRow("Status", purchase.status, textColor, secondaryTextColor),
-                  if (purchase.paidAt != null)
-                    _buildDetailRow("Paid At", _formatDate(purchase.paidAt!), textColor, secondaryTextColor),
-                  _buildDetailRow("Order ID", purchase.id, textColor, secondaryTextColor),
+                  _buildDetailRow("Artist", artist, textColor, secondaryTextColor),
+                  _buildDetailRow("Tour", tour, textColor, secondaryTextColor),
+                  _buildDetailRow("Venue", venue, textColor, secondaryTextColor),
+                  _buildDetailRow("Date", date, textColor, secondaryTextColor),
+                  _buildDetailRow("Ticket Type", ticketType, textColor, secondaryTextColor),
+                  _buildDetailRow("Quantity", quantity.toString(), textColor, secondaryTextColor),
+                  _buildDetailRow("Amount", formattedAmount, textColor, secondaryTextColor),
+                  _buildDetailRow("Status", status, textColor, secondaryTextColor),
+                  if (paidAtStr != null)
+                    _buildDetailRow("Paid At", _formatDate(DateTime.parse(paidAtStr)), textColor, secondaryTextColor),
+                  _buildDetailRow("Order ID", id, textColor, secondaryTextColor),
                 ],
               ),
             ),
@@ -371,8 +395,8 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     );
   }
 
-  Widget _buildQRPlaceholder(Purchase purchase) {
-    final isPaid = purchase.status == 'PAID';
+  Widget _buildQRPlaceholder(String status) {
+    final isPaid = status == 'PAID';
     return Container(
       width: 180,
       height: 180,

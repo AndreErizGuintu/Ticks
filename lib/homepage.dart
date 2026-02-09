@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:hive_flutter/hive_flutter.dart';
 import 'services/purchase_store.dart';
 
 class Homepage extends StatefulWidget {
@@ -1032,6 +1033,9 @@ class _HomepageState extends State<Homepage> {
               print("[_buyTicket] onPaymentSuccess callback triggered for invoice: $id");
               PurchaseStore().markAsPaid(id);
 
+              // Save to Hive
+              _savePurchaseToHive(id);
+
               // Show success dialog after WebView is dismissed
               Future.delayed(Duration(milliseconds: 500), () {
                 if (mounted) {
@@ -1068,6 +1072,43 @@ class _HomepageState extends State<Homepage> {
         )],
       ),
     );
+  }
+
+  void _savePurchaseToHive(String invoiceId) {
+    // Get the purchase from the store
+    final purchase = PurchaseStore().findById(invoiceId);
+    if (purchase == null || purchase.status != 'PAID') {
+      print("[_savePurchaseToHive] Purchase not found or not paid: $invoiceId");
+      return;
+    }
+
+    // Get Hive box
+    final box = Hive.box('auth');
+
+    // Update totalSpent
+    final currentTotal = box.get('totalSpent', defaultValue: 0.0) as double;
+    final newTotal = currentTotal + purchase.amount;
+    box.put('totalSpent', newTotal);
+    print("[_savePurchaseToHive] Updated totalSpent: $currentTotal -> $newTotal");
+
+    // Update purchaseHistory
+    final history = box.get('purchaseHistory', defaultValue: []) as List;
+    final purchaseData = {
+      'id': purchase.id,
+      'artist': purchase.concertArtist,
+      'tour': purchase.concertTour,
+      'venue': purchase.concertVenue,
+      'date': purchase.concertDate,
+      'ticketType': purchase.ticketType,
+      'quantity': purchase.quantity,
+      'amount': purchase.amount,
+      'status': purchase.status,
+      'paidAt': purchase.paidAt?.toIso8601String(),
+      'createdAt': purchase.createdAt.toIso8601String(),
+    };
+    history.add(purchaseData);
+    box.put('purchaseHistory', history);
+    print("[_savePurchaseToHive] Added to history, total purchases: ${history.length}");
   }
 
   void _showErrorDialog(String message) {
