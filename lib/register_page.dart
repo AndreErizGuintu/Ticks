@@ -80,9 +80,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final isDarkMode = brightness == Brightness.dark;
 
     return CupertinoPageScaffold(
-      backgroundColor: isDarkMode
-          ? const Color(0xFF000000)
-          : CupertinoColors.systemGroupedBackground,
+      backgroundColor: const Color(0xFF000000),
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -126,7 +124,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontSize: 34,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.5,
-                    color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                    color: CupertinoColors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -134,9 +132,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   'Sign up to get started with Ticks',
                   style: TextStyle(
                     fontSize: 17,
-                    color: isDarkMode
-                        ? const Color(0xFFAEAEB2)
-                        : CupertinoColors.secondaryLabel,
+                    color: Color(0xFF8E8E93),
                   ),
                 ),
                 const SizedBox(height: 50),
@@ -148,12 +144,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     padding: const EdgeInsets.all(16),
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(13),
                       color: CupertinoColors.systemRed.withValues(alpha: 0.1),
-                      border: Border.all(
-                        color: CupertinoColors.systemRed.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
                     ),
                     child: Row(
                       children: [
@@ -181,18 +173,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    color: isDarkMode
-                        ? const Color(0xFF1C1C1E)
-                        : CupertinoColors.systemBackground,
-                    boxShadow: isDarkMode
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: CupertinoColors.systemGrey.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                    color: Color(0xFF2C2C2E),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -200,9 +188,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         padding: const EdgeInsets.only(left: 16, right: 12),
                         child: Icon(
                           CupertinoIcons.person_fill,
-                          color: isDarkMode
-                              ? const Color(0xFF8E8E93)
-                              : CupertinoColors.systemGrey,
+                          color: Color(0xFF8E8E93),
                           size: 20,
                         ),
                       ),
@@ -216,13 +202,11 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           style: TextStyle(
                             fontSize: 17,
-                            color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                            color: CupertinoColors.white,
                           ),
                           placeholderStyle: TextStyle(
                             fontSize: 17,
-                            color: isDarkMode
-                                ? const Color(0xFF8E8E93)
-                                : CupertinoColors.placeholderText,
+                            color: Color(0xFF8E8E93),
                           ),
                           onChanged: (value) {
                             if (_errorMessage.isNotEmpty) {
@@ -242,18 +226,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    color: isDarkMode
-                        ? const Color(0xFF1C1C1E)
-                        : CupertinoColors.systemBackground,
-                    boxShadow: isDarkMode
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: CupertinoColors.systemGrey.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                    color: Color(0xFF2C2C2E),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -261,9 +241,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         padding: const EdgeInsets.only(left: 16, right: 12),
                         child: Icon(
                           CupertinoIcons.lock_fill,
-                          color: isDarkMode
-                              ? const Color(0xFF8E8E93)
-                              : CupertinoColors.systemGrey,
+                          color: Color(0xFF8E8E93),
                           size: 20,
                         ),
                       ),
@@ -278,13 +256,11 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           style: TextStyle(
                             fontSize: 17,
-                            color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                            color: CupertinoColors.white,
                           ),
                           placeholderStyle: TextStyle(
                             fontSize: 17,
-                            color: isDarkMode
-                                ? const Color(0xFF8E8E93)
-                                : CupertinoColors.placeholderText,
+                            color: Color(0xFF8E8E93),
                           ),
                           onChanged: (value) {
                             if (_errorMessage.isNotEmpty) {
@@ -306,9 +282,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           _obscurePassword
                               ? CupertinoIcons.eye_slash_fill
                               : CupertinoIcons.eye_fill,
-                          color: isDarkMode
-                              ? const Color(0xFF8E8E93)
-                              : CupertinoColors.systemGrey,
+                          color: Color(0xFF8E8E93),
                           size: 20,
                         ),
                       ),

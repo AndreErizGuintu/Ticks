@@ -45,7 +45,7 @@ class ConcertApp extends StatelessWidget {
           theme: CupertinoThemeData(
             brightness: isDarkMode ? Brightness.dark : Brightness.light,
             primaryColor: Color(0xFF007AFF),
-            barBackgroundColor: isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.systemBackground,
+            barBackgroundColor: isDarkMode ? Color(0xFF040303) : CupertinoColors.systemBackground,
             scaffoldBackgroundColor: isDarkMode ? Color(0xFF000000) : CupertinoColors.systemGroupedBackground,
             textTheme: CupertinoTextThemeData(
               textStyle: TextStyle(
@@ -137,7 +137,67 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _resetData() {
+  void _resetData() async {
+    final box = Hive.box('auth');
+    final biometricsEnabled = box.get('biometricsEnabled', defaultValue: false) == true;
+
+    // If biometrics is enabled, require Face ID authentication first
+    if (biometricsEnabled) {
+      final auth = LocalAuthentication();
+
+      try {
+        final canCheck = await auth.canCheckBiometrics;
+        final supported = await auth.isDeviceSupported();
+
+        if (!canCheck || !supported) {
+          // If biometrics not available, show error
+          showCupertinoDialog(
+            context: context,
+            builder: (context) => CupertinoAlertDialog(
+              title: const Text('Biometrics Not Available'),
+              content: const Text('Face ID is not available on this device. Please disable biometrics in settings to reset data.'),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('OK'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+
+        // Authenticate with Face ID
+        final didAuth = await auth.authenticate(
+          localizedReason: 'Authenticate to reset your data',
+          biometricOnly: true,
+        );
+
+        if (!didAuth) {
+          // User cancelled or authentication failed
+          return;
+        }
+      } catch (e) {
+        print('Biometric authentication error: $e');
+        // Show error and return
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text('Authentication Error'),
+            content: Text('Face ID authentication failed: ${e.toString()}'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+    }
+
+    // Show reset confirmation dialog (after Face ID auth if enabled)
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
@@ -152,12 +212,12 @@ class _LoginPageState extends State<LoginPage> {
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: () {
-              final box = Hive.box('auth');
               // Delete ALL data
               box.delete('username');
               box.delete('password');
               box.delete('totalSpent');
               box.delete('purchaseHistory');
+              box.delete('biometricsEnabled');
               Navigator.pop(context); // Close dialog
               Navigator.pushReplacement(
                 context,
@@ -177,8 +237,7 @@ class _LoginPageState extends State<LoginPage> {
       valueListenable: darkModeNotifier,
       builder: (context, isDarkMode, _) {
         return CupertinoPageScaffold(
-          backgroundColor:
-              isDarkMode ? Color(0xFF000000) : Color(0xFFF2F2F7),
+          backgroundColor: Color(0xFF000000),
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -222,7 +281,7 @@ class _LoginPageState extends State<LoginPage> {
                         fontSize: 34,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.4,
-                        color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                        color: CupertinoColors.white,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -231,7 +290,7 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w400,
-                        color: isDarkMode ? Color(0xFF8E8E93) : Color(0xFF8E8E93),
+                        color: Color(0xFF8E8E93),
                       ),
                     ),
                     const SizedBox(height: 44),
@@ -272,7 +331,14 @@ class _LoginPageState extends State<LoginPage> {
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(13),
-                        color: isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.white,
+                        color: Color(0xFF2C2C2E),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
@@ -298,7 +364,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     style: TextStyle(
                                       fontSize: 17,
-                                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                                      color: CupertinoColors.white,
                                     ),
                                     placeholderStyle: TextStyle(
                                       fontSize: 17,
@@ -320,7 +386,7 @@ class _LoginPageState extends State<LoginPage> {
                           Container(
                             height: 0.5,
                             margin: const EdgeInsets.only(left: 48),
-                            color: isDarkMode ? Color(0xFF38383A) : Color(0xFFC6C6C8),
+                            color: Color(0xFF48484A),
                           ),
                           // Password field
                           Container(
@@ -345,7 +411,7 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     style: TextStyle(
                                       fontSize: 17,
-                                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                                      color: CupertinoColors.white,
                                     ),
                                     placeholderStyle: TextStyle(
                                       fontSize: 17,
@@ -422,6 +488,21 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(13),
                           color: isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.white,
+                          border: isDarkMode
+                              ? Border.all(
+                                  color: Color(0xFF38383A),
+                                  width: 0.5,
+                                )
+                              : null,
+                          boxShadow: isDarkMode
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                         ),
                         child: CupertinoButton(
                           padding: EdgeInsets.zero,
@@ -634,59 +715,27 @@ class _MainScreenState extends State<MainScreen> {
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          "Total Spent",
-                                          style: TextStyle(
-                                            color: CupertinoColors.white,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "₱24,500",
-                                          style: TextStyle(
-                                            color: CupertinoColors.white,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
+                              Center(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      "Next Event",
+                                      style: TextStyle(
+                                        color: CupertinoColors.white.withValues(alpha: 0.9),
+                                        fontSize: 14,
+                                      ),
                                     ),
-                                  ),
-                                  Container(
-                                    width: 1,
-                                    height: 40,
-                                    color: CupertinoColors.white.withValues(alpha: 0.3),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          "Next Event",
-                                          style: TextStyle(
-                                            color: CupertinoColors.white,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "Mar 15",
-                                          style: TextStyle(
-                                            color: CupertinoColors.white,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "Mar 15, 2024",
+                                      style: TextStyle(
+                                        color: CupertinoColors.white,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -1185,11 +1234,30 @@ class _MainScreenState extends State<MainScreen> {
                               CupertinoListTile(
                                 backgroundColor: Colors.transparent,
                                 onTap: () {
-                                  // Simple logout: just navigate back to Login page.
-                                  // Does NOT delete data or reset anything.
-                                  Navigator.pushReplacement(
-                                    context,
-                                    CupertinoPageRoute(builder: (context) => const LoginPage()),
+                                  // Show confirmation dialog before logging out
+                                  showCupertinoDialog(
+                                    context: context,
+                                    builder: (context) => CupertinoAlertDialog(
+                                      title: const Text('Logout'),
+                                      content: const Text('Are you sure you want to logout?'),
+                                      actions: [
+                                        CupertinoDialogAction(
+                                          child: const Text('Cancel'),
+                                          onPressed: () => Navigator.pop(context),
+                                        ),
+                                        CupertinoDialogAction(
+                                          isDestructiveAction: true,
+                                          onPressed: () {
+                                            Navigator.pop(context); // Close dialog
+                                            Navigator.pushReplacement(
+                                              context,
+                                              CupertinoPageRoute(builder: (context) => const LoginPage()),
+                                            );
+                                          },
+                                          child: const Text('Logout'),
+                                        ),
+                                      ],
+                                    ),
                                   );
                                 },
                                 leading: Container(
