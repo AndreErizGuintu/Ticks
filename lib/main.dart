@@ -71,6 +71,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
+  bool _obscurePassword = true;
 
   bool _hasCredentials = false;
   bool _biometricsEnabled = false;
@@ -177,41 +178,50 @@ class _LoginPageState extends State<LoginPage> {
       builder: (context, isDarkMode, _) {
         return CupertinoPageScaffold(
           backgroundColor:
-              isDarkMode ? Color(0xFF000000) : CupertinoColors.systemGroupedBackground,
+              isDarkMode ? Color(0xFF000000) : Color(0xFFF2F2F7),
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // App Logo/Icon
+                    const SizedBox(height: 60),
+                    // App Logo/Icon - iOS style
                     Container(
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
+                        borderRadius: BorderRadius.circular(22),
+                        gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
                             Color(0xFF007AFF),
-                            Color(0xFF5856D6),
+                            Color(0xFF0051D5),
                           ],
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.25),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      child: Icon(
-                        CupertinoIcons.ticket,
+                      child: const Icon(
+                        CupertinoIcons.ticket_fill,
                         size: 50,
                         color: CupertinoColors.white,
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 48),
                     Text(
-                      'Welcome Back',
+                      'Ticks',
                       style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
                         color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                       ),
                     ),
@@ -219,114 +229,208 @@ class _LoginPageState extends State<LoginPage> {
                     Text(
                       'Sign in to continue',
                       style: TextStyle(
-                        fontSize: 16,
-                        color:
-                            isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w400,
+                        color: isDarkMode ? Color(0xFF8E8E93) : Color(0xFF8E8E93),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    // Username field
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color:
-                            isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.systemBackground,
-                      ),
-                      child: CupertinoTextField(
-                        controller: _usernameController,
-                        placeholder: 'Username',
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.transparent,
-                        ),
-                        style: TextStyle(
-                          color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
-                        ),
-                        placeholderStyle: TextStyle(
-                          color:
-                              isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Password field
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color:
-                            isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.systemBackground,
-                      ),
-                      child: CupertinoTextField(
-                        controller: _passwordController,
-                        placeholder: 'Password',
-                        obscureText: true,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          color: Colors.transparent,
-                        ),
-                        style: TextStyle(
-                          color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
-                        ),
-                        placeholderStyle: TextStyle(
-                          color:
-                              isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Error message
+                    const SizedBox(height: 44),
+
+                    // Error message - iOS style
                     if (_errorMessage.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          _errorMessage,
-                          style: TextStyle(
-                            color: CupertinoColors.systemRed,
-                            fontSize: 14,
-                          ),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(13),
+                          color: CupertinoColors.systemRed.withValues(alpha: 0.1),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              CupertinoIcons.exclamationmark_circle_fill,
+                              color: CupertinoColors.systemRed,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _errorMessage,
+                                style: const TextStyle(
+                                  color: CupertinoColors.systemRed,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    const SizedBox(height: 20),
-                    // Sign In button
-                    SizedBox(
+
+                    // Input fields container - iOS grouped style
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(13),
+                        color: isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.white,
+                      ),
+                      child: Column(
+                        children: [
+                          // Username field
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.person_fill,
+                                  color: Color(0xFF8E8E93),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: CupertinoTextField(
+                                    controller: _usernameController,
+                                    placeholder: 'Username',
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.transparent,
+                                      border: null,
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                                    ),
+                                    placeholderStyle: TextStyle(
+                                      fontSize: 17,
+                                      color: Color(0xFF8E8E93),
+                                    ),
+                                    onChanged: (value) {
+                                      if (_errorMessage.isNotEmpty) {
+                                        setState(() {
+                                          _errorMessage = '';
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Divider
+                          Container(
+                            height: 0.5,
+                            margin: const EdgeInsets.only(left: 48),
+                            color: isDarkMode ? Color(0xFF38383A) : Color(0xFFC6C6C8),
+                          ),
+                          // Password field
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.lock_fill,
+                                  color: Color(0xFF8E8E93),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: CupertinoTextField(
+                                    controller: _passwordController,
+                                    placeholder: 'Password',
+                                    obscureText: _obscurePassword,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.transparent,
+                                      border: null,
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                                    ),
+                                    placeholderStyle: TextStyle(
+                                      fontSize: 17,
+                                      color: Color(0xFF8E8E93),
+                                    ),
+                                    onChanged: (value) {
+                                      if (_errorMessage.isNotEmpty) {
+                                        setState(() {
+                                          _errorMessage = '';
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                                CupertinoButton(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                  child: Icon(
+                                    _obscurePassword
+                                        ? CupertinoIcons.eye_slash_fill
+                                        : CupertinoIcons.eye_fill,
+                                    color: Color(0xFF8E8E93),
+                                    size: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Sign In button - iOS style
+                    Container(
                       width: double.infinity,
-                      child: CupertinoButton(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(13),
                         color: Color(0xFF007AFF),
-                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        borderRadius: BorderRadius.circular(13),
                         onPressed: _signIn,
                         child: const Text(
                           'Sign In',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 17,
                             fontWeight: FontWeight.w600,
+                            color: CupertinoColors.white,
                           ),
                         ),
                       ),
                     ),
 
-                    // Face ID button (only when username/password exist AND user enabled it in Settings)
+                    // Face ID button
                     if (_hasCredentials && _biometricsEnabled) ...[
                       const SizedBox(height: 12),
-                      SizedBox(
+                      Container(
                         width: double.infinity,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(13),
+                          color: isDarkMode ? Color(0xFF1C1C1E) : CupertinoColors.white,
+                        ),
                         child: CupertinoButton(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          color: isDarkMode ? const Color(0xFF1C1C1E) : CupertinoColors.systemGrey5,
-                          borderRadius: BorderRadius.circular(12),
+                          padding: EdgeInsets.zero,
+                          borderRadius: BorderRadius.circular(13),
                           onPressed: () async {
                             setState(() {
                               _errorMessage = '';
                             });
 
-                            // ENABLE FACE ID WHEN TESTING ON IPHONE
-                            // ------------------------------------------------------------
-                            // NOTE:
-                            // - iOS requires Face ID usage description in Info.plist.
-                            // - Face ID won't work on simulator.
-                            // - Android will use fingerprint/biometrics depending on device.
-                            //
                             final auth = LocalAuthentication();
                             final canCheck = await auth.canCheckBiometrics;
                             final supported = await auth.isDeviceSupported();
@@ -337,26 +441,17 @@ class _LoginPageState extends State<LoginPage> {
                               return;
                             }
 
-                            // (Optional) check enrolled biometrics types
-                            // final types = await auth.getAvailableBiometrics();
-                            // final hasFaceId = types.contains(BiometricType.face);
-
                             final didAuth = await auth.authenticate(
                               localizedReason: 'Use Face ID to sign in',
                               biometricOnly: true,
                             );
 
-
                             if (!didAuth) return;
 
-                            // If Face ID succeeds, auto-fill and sign-in.
                             final box = Hive.box('auth');
                             _usernameController.text = (box.get('username') ?? '') as String;
                             _passwordController.text = (box.get('password') ?? '') as String;
                             _signIn();
-                            // ------------------------------------------------------------
-
-                            // For now (biometric disabled in code), do nothing.
                           },
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -364,15 +459,15 @@ class _LoginPageState extends State<LoginPage> {
                               Icon(
                                 CupertinoIcons.person_crop_circle_badge_checkmark,
                                 size: 20,
-                                color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                                color: Color(0xFF007AFF),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 'Sign in with Face ID',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 17,
                                   fontWeight: FontWeight.w600,
-                                  color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                                  color: Color(0xFF007AFF),
                                 ),
                               ),
                             ],
@@ -381,7 +476,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ],
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                     // Reset Data button
                     CupertinoButton(
                       onPressed: _resetData,
@@ -389,10 +484,12 @@ class _LoginPageState extends State<LoginPage> {
                         'Reset Data',
                         style: TextStyle(
                           color: CupertinoColors.systemRed,
-                          fontSize: 16,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -420,7 +517,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  int _cartCount = 0;
 
   bool _biometricsEnabled = false;
 
@@ -481,9 +577,7 @@ class _MainScreenState extends State<MainScreen> {
                 return Homepage(
                   isDarkMode: isDarkMode,
                   onBuyTicket: (concert) {
-                    setState(() {
-                      _cartCount++;
-                    });
+                    // Cart count tracking removed - can be added back if needed
                   },
                 );
               case 1:
@@ -535,7 +629,7 @@ class _MainScreenState extends State<MainScreen> {
                               Text(
                                 "3 upcoming • 5 attended",
                                 style: TextStyle(
-                                  color: CupertinoColors.white.withOpacity(0.9),
+                                  color: CupertinoColors.white.withValues(alpha: 0.9),
                                   fontSize: 15,
                                 ),
                               ),
@@ -567,7 +661,7 @@ class _MainScreenState extends State<MainScreen> {
                                   Container(
                                     width: 1,
                                     height: 40,
-                                    color: CupertinoColors.white.withOpacity(0.3),
+                                    color: CupertinoColors.white.withValues(alpha: 0.3),
                                   ),
                                   const SizedBox(width: 20),
                                   Expanded(
@@ -630,12 +724,19 @@ class _MainScreenState extends State<MainScreen> {
                                 height: 50,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
-                                  color: colors[index].withOpacity(0.2),
+                                  color: colors[index].withValues(alpha: 0.15),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colors[index].withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
                                 child: Icon(
-                                  CupertinoIcons.ticket,
+                                  CupertinoIcons.ticket_fill,
                                   color: colors[index],
-                                  size: 24,
+                                  size: 26,
                                 ),
                               ),
                               title: Text(
@@ -703,7 +804,7 @@ class _MainScreenState extends State<MainScreen> {
                                 height: 50,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
-                                  color: CupertinoColors.systemGrey4.withOpacity(0.3),
+                                  color: CupertinoColors.systemGrey4.withValues(alpha: 0.3),
                                 ),
                                 child: Icon(
                                   CupertinoIcons.checkmark_alt,
@@ -901,7 +1002,7 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    color: Color(0xFF007AFF).withOpacity(0.1),
+                                    color: Color(0xFF007AFF).withValues(alpha: 0.1),
                                   ),
                                   child: Icon(
                                     CupertinoIcons.person,
@@ -957,7 +1058,7 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    color: Color(0xFFFF9500).withOpacity(0.1),
+                                    color: Color(0xFFFF9500).withValues(alpha: 0.1),
                                   ),
                                   child: Icon(
                                     CupertinoIcons.bell,
@@ -1007,7 +1108,7 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    color: Color(0xFF30D158).withOpacity(0.1),
+                                    color: Color(0xFF30D158).withValues(alpha: 0.1),
                                   ),
                                   child: Icon(
                                     CupertinoIcons.bag,
@@ -1047,7 +1148,7 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    color: Color(0xFFFF3B30).withOpacity(0.1),
+                                    color: Color(0xFFFF3B30).withValues(alpha: 0.1),
                                   ),
                                   child: Icon(
                                     CupertinoIcons.creditcard,
@@ -1075,32 +1176,53 @@ class _MainScreenState extends State<MainScreen> {
                                   color: isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              // Logout button
                               Container(
+                                height: 0.5,
                                 margin: const EdgeInsets.symmetric(horizontal: 20),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  color: Color(0xFF007AFF),
-                                ),
-                                child: CupertinoButton(
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  onPressed: () {
-                                    // Simple logout: just navigate back to Login page.
-                                    // Does NOT delete data or reset anything.
-                                    Navigator.pushReplacement(
-                                      context,
-                                      CupertinoPageRoute(builder: (context) => const LoginPage()),
-                                    );
-                                  },
-                                  child: Text(
-                                    "Logout",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: CupertinoColors.white,
-                                    ),
+                                color: CupertinoColors.separator,
+                              ),
+                              // Logout button
+                              CupertinoListTile(
+                                backgroundColor: Colors.transparent,
+                                onTap: () {
+                                  // Simple logout: just navigate back to Login page.
+                                  // Does NOT delete data or reset anything.
+                                  Navigator.pushReplacement(
+                                    context,
+                                    CupertinoPageRoute(builder: (context) => const LoginPage()),
+                                  );
+                                },
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: CupertinoColors.systemRed.withValues(alpha: 0.1),
                                   ),
+                                  child: Icon(
+                                    CupertinoIcons.square_arrow_right,
+                                    color: CupertinoColors.systemRed,
+                                    size: 22,
+                                  ),
+                                ),
+                                title: Text(
+                                  "Logout",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    color: CupertinoColors.systemRed,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "Sign out of your account",
+                                  style: TextStyle(
+                                    color: isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
+                                  ),
+                                ),
+                                trailing: Icon(
+                                  CupertinoIcons.chevron_forward,
+                                  size: 18,
+                                  color: isDarkMode ? Color(0xFFAEAEB2) : CupertinoColors.secondaryLabel,
                                 ),
                               ),
                             ],
@@ -1161,7 +1283,7 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    color: const Color(0xFF007AFF).withOpacity(0.1),
+                                    color: const Color(0xFF007AFF).withValues(alpha: 0.1),
                                   ),
                                   child: Icon(
                                     isDarkMode
@@ -1196,7 +1318,7 @@ class _MainScreenState extends State<MainScreen> {
                                     // the switch will never get out of sync.
                                     darkModeNotifier.value = value;
                                   },
-                                  activeColor: const Color(0xFF007AFF),
+                                  activeTrackColor: const Color(0xFF007AFF),
                                 ),
                               ),
                             ],
@@ -1234,7 +1356,7 @@ class _MainScreenState extends State<MainScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    color: const Color(0xFF007AFF).withOpacity(0.1),
+                                    color: const Color(0xFF007AFF).withValues(alpha: 0.1),
                                   ),
                                   child: Icon(
                                     CupertinoIcons.person_crop_circle_badge_checkmark,
@@ -1266,7 +1388,7 @@ class _MainScreenState extends State<MainScreen> {
                                       _biometricsEnabled = value;
                                     });
                                   },
-                                  activeColor: const Color(0xFF007AFF),
+                                  activeTrackColor: const Color(0xFF007AFF),
                                 ),
                               ),
                             ],

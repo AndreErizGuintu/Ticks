@@ -13,25 +13,91 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  String _errorMessage = '';
+
+  void _register() {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // Validation
+    if (username.isEmpty && password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter username and password';
+      });
+      return;
+    }
+
+    if (username.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter a username';
+      });
+      return;
+    }
+
+    if (password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter a password';
+      });
+      return;
+    }
+
+    if (username.length < 3) {
+      setState(() {
+        _errorMessage = 'Username must be at least 3 characters';
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      setState(() {
+        _errorMessage = 'Password must be at least 6 characters';
+      });
+      return;
+    }
+
+    // Get the Hive box
+    final box = Hive.box('auth');
+
+    // Save username and password
+    // TODO: Add password hashing here before storing in production
+    box.put('username', username);
+    box.put('password', password);
+
+    // Navigate back to Login page (restart app to show LoginPage)
+    Navigator.pushAndRemoveUntil(
+      context,
+      CupertinoPageRoute(
+        builder: (context) => const ConcertApp(),
+      ),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final brightness = MediaQuery.of(context).platformBrightness;
+    final isDarkMode = brightness == Brightness.dark;
+
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
+      backgroundColor: isDarkMode
+          ? const Color(0xFF000000)
+          : CupertinoColors.systemGroupedBackground,
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // App Logo/Icon
+                const SizedBox(height: 40),
+                // App Logo/Icon with shadow
                 Container(
-                  width: 100,
-                  height: 100,
+                  width: 120,
+                  height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
+                    gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
@@ -39,111 +105,252 @@ class _RegisterPageState extends State<RegisterPage> {
                         Color(0xFF5856D6),
                       ],
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                  child: Icon(
-                    CupertinoIcons.ticket,
-                    size: 50,
+                  child: const Icon(
+                    CupertinoIcons.ticket_fill,
+                    size: 60,
                     color: CupertinoColors.white,
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
                 Text(
                   'Create Account',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 34,
                     fontWeight: FontWeight.bold,
-                    color: CupertinoColors.black,
+                    letterSpacing: -0.5,
+                    color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Register to get started',
+                  'Sign up to get started with Ticks',
                   style: TextStyle(
-                    fontSize: 16,
-                    color: CupertinoColors.secondaryLabel,
+                    fontSize: 17,
+                    color: isDarkMode
+                        ? const Color(0xFFAEAEB2)
+                        : CupertinoColors.secondaryLabel,
                   ),
                 ),
-                const SizedBox(height: 40),
-                // Username field
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: CupertinoColors.systemBackground,
-                  ),
-                  child: CupertinoTextField(
-                    controller: _usernameController,
-                    placeholder: 'Username',
+                const SizedBox(height: 50),
+
+                // Error message
+                if (_errorMessage.isNotEmpty)
+                  Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      color: Colors.transparent,
+                      color: CupertinoColors.systemRed.withValues(alpha: 0.1),
+                      border: Border.all(
+                        color: CupertinoColors.systemRed.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
                     ),
-                    style: TextStyle(
-                      color: CupertinoColors.black,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          CupertinoIcons.exclamationmark_circle_fill,
+                          color: CupertinoColors.systemRed,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _errorMessage,
+                            style: const TextStyle(
+                              color: CupertinoColors.systemRed,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    placeholderStyle: TextStyle(
-                      color: CupertinoColors.secondaryLabel,
-                    ),
+                  ),
+
+                // Username field with icon
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: isDarkMode
+                        ? const Color(0xFF1C1C1E)
+                        : CupertinoColors.systemBackground,
+                    boxShadow: isDarkMode
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: CupertinoColors.systemGrey.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, right: 12),
+                        child: Icon(
+                          CupertinoIcons.person_fill,
+                          color: isDarkMode
+                              ? const Color(0xFF8E8E93)
+                              : CupertinoColors.systemGrey,
+                          size: 20,
+                        ),
+                      ),
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: _usernameController,
+                          placeholder: 'Username',
+                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 0),
+                          decoration: const BoxDecoration(
+                            color: Colors.transparent,
+                          ),
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                          ),
+                          placeholderStyle: TextStyle(
+                            fontSize: 17,
+                            color: isDarkMode
+                                ? const Color(0xFF8E8E93)
+                                : CupertinoColors.placeholderText,
+                          ),
+                          onChanged: (value) {
+                            if (_errorMessage.isNotEmpty) {
+                              setState(() {
+                                _errorMessage = '';
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Password field
+                // Password field with icon and toggle
                 Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: CupertinoColors.systemBackground,
+                    borderRadius: BorderRadius.circular(14),
+                    color: isDarkMode
+                        ? const Color(0xFF1C1C1E)
+                        : CupertinoColors.systemBackground,
+                    boxShadow: isDarkMode
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: CupertinoColors.systemGrey.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                   ),
-                  child: CupertinoTextField(
-                    controller: _passwordController,
-                    placeholder: 'Password',
-                    obscureText: true,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.transparent,
-                    ),
-                    style: TextStyle(
-                      color: CupertinoColors.black,
-                    ),
-                    placeholderStyle: TextStyle(
-                      color: CupertinoColors.secondaryLabel,
-                    ),
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, right: 12),
+                        child: Icon(
+                          CupertinoIcons.lock_fill,
+                          color: isDarkMode
+                              ? const Color(0xFF8E8E93)
+                              : CupertinoColors.systemGrey,
+                          size: 20,
+                        ),
+                      ),
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: _passwordController,
+                          placeholder: 'Password',
+                          obscureText: _obscurePassword,
+                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 0),
+                          decoration: const BoxDecoration(
+                            color: Colors.transparent,
+                          ),
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: isDarkMode ? CupertinoColors.white : CupertinoColors.black,
+                          ),
+                          placeholderStyle: TextStyle(
+                            fontSize: 17,
+                            color: isDarkMode
+                                ? const Color(0xFF8E8E93)
+                                : CupertinoColors.placeholderText,
+                          ),
+                          onChanged: (value) {
+                            if (_errorMessage.isNotEmpty) {
+                              setState(() {
+                                _errorMessage = '';
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                        child: Icon(
+                          _obscurePassword
+                              ? CupertinoIcons.eye_slash_fill
+                              : CupertinoIcons.eye_fill,
+                          color: isDarkMode
+                              ? const Color(0xFF8E8E93)
+                              : CupertinoColors.systemGrey,
+                          size: 20,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 32),
-                // Register button
-                SizedBox(
+                const SizedBox(height: 40),
+                // Register button with gradient
+                Container(
                   width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF007AFF),
+                        Color(0xFF5856D6),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.4),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
                   child: CupertinoButton(
-                    color: Color(0xFF007AFF),
-                    borderRadius: BorderRadius.circular(12),
-                    onPressed: () {
-                      // Get the Hive box
-                      final box = Hive.box('auth');
-                      
-                      // Save username and password
-                      // TODO: Add password hashing here before storing in production
-                      box.put('username', _usernameController.text);
-                      box.put('password', _passwordController.text);
-                      
-                      // Navigate back to Login page (restart app to show LoginPage)
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        CupertinoPageRoute(
-                          builder: (context) => const ConcertApp(),
-                        ),
-                        (route) => false,
-                      );
-                    },
+                    padding: EdgeInsets.zero,
+                    borderRadius: BorderRadius.circular(14),
+                    onPressed: _register,
                     child: const Text(
-                      'Register',
+                      'Create Account',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.w600,
+                        color: CupertinoColors.white,
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 40),
               ],
             ),
           ),

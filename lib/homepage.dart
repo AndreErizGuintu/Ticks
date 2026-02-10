@@ -167,13 +167,12 @@ class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 375;
 
     final backgroundColor = widget.isDarkMode ? Color(0xFF000000) : Color(0xFFF2F2F7);
     final cardColor = widget.isDarkMode ? Color(0xFF1C1C1E) : Colors.white;
     final textColor = widget.isDarkMode ? Colors.white : Colors.black;
     final secondaryTextColor = widget.isDarkMode ? Color(0xFF8E8E93) : Color(0xFF8E8E93);
-    final shadowColor = widget.isDarkMode ? Colors.transparent : Colors.black.withOpacity(0.05);
+    final shadowColor = widget.isDarkMode ? Colors.transparent : Colors.black.withValues(alpha: 0.05);
 
     return CupertinoPageScaffold(
       backgroundColor: backgroundColor,
@@ -257,8 +256,8 @@ class _HomepageState extends State<Homepage> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(widget.isDarkMode ? 0.5 : 0.3),
-                          Colors.black.withOpacity(widget.isDarkMode ? 0.2 : 0.1),
+                          Colors.black.withValues(alpha: widget.isDarkMode ? 0.5 : 0.3),
+                          Colors.black.withValues(alpha: widget.isDarkMode ? 0.2 : 0.1),
                           Colors.transparent,
                         ],
                       ),
@@ -274,8 +273,8 @@ class _HomepageState extends State<Homepage> {
                           padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: widget.isDarkMode
-                                ? Colors.white.withOpacity(0.15)
-                                : Colors.white.withOpacity(0.9),
+                                ? Colors.white.withValues(alpha: 0.15)
+                                : Colors.white.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -299,7 +298,7 @@ class _HomepageState extends State<Homepage> {
                             shadows: [
                               Shadow(
                                 blurRadius: 4,
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 offset: Offset(1, 1),
                               ),
                             ],
@@ -332,7 +331,7 @@ class _HomepageState extends State<Homepage> {
                             height: 36,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color(0xFF007AFF).withOpacity(widget.isDarkMode ? 0.2 : 0.1),
+                              color: Color(0xFF007AFF).withValues(alpha: widget.isDarkMode ? 0.2 : 0.1),
                             ),
                             child: Icon(
                               CupertinoIcons.ticket,
@@ -376,7 +375,7 @@ class _HomepageState extends State<Homepage> {
                             height: 36,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color(0xFFFF9500).withOpacity(widget.isDarkMode ? 0.2 : 0.1),
+                              color: Color(0xFFFF9500).withValues(alpha: widget.isDarkMode ? 0.2 : 0.1),
                             ),
                             child: Icon(
                               CupertinoIcons.clock_fill,
@@ -420,7 +419,7 @@ class _HomepageState extends State<Homepage> {
                             height: 36,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color(0xFF30D158).withOpacity(widget.isDarkMode ? 0.2 : 0.1),
+                              color: Color(0xFF30D158).withValues(alpha: widget.isDarkMode ? 0.2 : 0.1),
                             ),
                             child: Icon(
                               CupertinoIcons.checkmark_seal_fill,
@@ -543,12 +542,12 @@ class _HomepageState extends State<Homepage> {
                         end: Alignment.bottomRight,
                         colors: widget.isDarkMode
                             ? [
-                          Color(0xFF0A84FF).withOpacity(0.2),
-                          Color(0xFF5E5CE6).withOpacity(0.2),
+                          Color(0xFF0A84FF).withValues(alpha: 0.2),
+                          Color(0xFF5E5CE6).withValues(alpha: 0.2),
                         ]
                             : [
-                          Color(0xFF007AFF).withOpacity(0.1),
-                          Color(0xFF5856D6).withOpacity(0.1),
+                          Color(0xFF007AFF).withValues(alpha: 0.1),
+                          Color(0xFF5856D6).withValues(alpha: 0.1),
                         ],
                       ),
                     ),
